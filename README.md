@@ -1,15 +1,6 @@
 # libconcurrent
 High level concurrent C library
 
- _ _ _                                                    _   
-| (_) |__   ___ ___  _ __   ___ _   _ _ __ _ __ ___ _ __ | |_ 
-| | | '_ \ / __/ _ \| '_ \ / __| | | | '__| '__/ _ \ '_ \| __|
-| | | |_) | (_| (_) | | | | (__| |_| | |  | | |  __/ | | | |_ 
-|_|_|_.__/ \___\___/|_| |_|\___|\__,_|_|  |_|  \___|_| |_|\__|
-
-
------------------------------------------------------------------------------------------------
-
 Description
 -----------
 libconcurrent is a C library which provides an implementation of a high level concurrent library,
