@@ -30,6 +30,14 @@
 #include <time.h>
 #include <pthread.h>
 
+#ifdef _WIN32
+
+#if !defined(ETIMEDOUT)
+#  define ETIMEDOUT 10060 /* Same as WSAETIMEDOUT */
+#endif /* ETIMEDOUT */
+
+#endif /* _WIN32 */
+
 #endif
 
 #include "time_util.h"
