@@ -43,13 +43,17 @@ extern void
 concurrent_util_init_signal(concurrent_signal * signal);
 
 /**
- * Wait (thread blocks) on a concurrent signal. Note that
- * the implementation expects that the mutex of the
- * concurrent signal is already locked prior to the call.
- * Once the call has been made the mutex
- * shall be released until a successful return of the function.
+ * Wait (thread blocks) on a concurrent signal.
+ *
+ * Note that the underneath implementation expects that
+ * the mutex of the concurrent signal is already locked
+ * prior to the call.
+ * Once the call has been made the mutex shall be released
+ * until a successful return of the function.
  * Upon successful return, the mutex shall have been locked and shall
  * be owned by the calling thread.
+ * Thus the implementation of this function will lock the mutex
+ * before making the actual call and unlock it after the call.
  *
  * @param signal concurrent signal structure.
  *
@@ -60,12 +64,16 @@ concurrent_util_wait_signal(concurrent_signal * signal);
 
 /**
  * Wait (thread blocks) on a concurrent signal for the specified timeout.
- * Note that the implementation expects that the mutex of the concurrent
- * signal is already locked prior to the call.
- * Once the call has been made the mutex shall be released until a
- * successful return of the function.
+ *
+ * Note that the underneath implementation expects that
+ * the mutex of the concurrent signal is already locked
+ * prior to the call.
+ * Once the call has been made the mutex shall be released
+ * until a successful return of the function.
  * Upon successful return, the mutex shall have been locked and shall
  * be owned by the calling thread.
+ * Thus the implementation of this function will lock the mutex
+ * before making the actual call and unlock it after the call.
  *
  * @param signal concurrent signal structure.
  * @param timeout milliseconds to wait on the thread condition variable.
