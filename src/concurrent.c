@@ -27,11 +27,21 @@
 #include "time_util.h"
 #include "log.h"
 
+/**
+ * Function that cleans up a concurrent callback just before
+ * the end of it's execution.
+ *
+ * @param thread_id identity of the thread executor
+ *        responsible for executing the concurrent callback.
+ */
+typedef void (*thread_cleanup_routine)(size_t * local_thread_id);
+
 /* structure to store information of concurrent call-backs. */
 typedef struct _concurrent_cb_info{
     long unsigned int interval;
     concurent_cb cb;
     void *cb_data;
+    thread_cleanup_routine cleanup_func;
     int periodic_cb;
     int strict_timing_enabled;
     size_t * local_thread_id;
@@ -43,6 +53,8 @@ typedef struct _concurrent_cb_info{
 static int concurrent_initialized = 0;
 /* hash map to store concurrent call-back information */
 static hashmap *callback_map;
+/* hash map to store concurrent call-back information */
+static hashmap *removal_callback_map;
 /* hash map to store mutexes */
 static hashmap *mutex_map;
 /* hash map to store thread conditional variables */
@@ -53,8 +65,6 @@ static size_t next_thread_ident = 1;
 static size_t next_mutex_ident = 1;
 /* next internal thread conditional variable identity */
 static size_t next_condvar_ident = 1;
-/* mudule initialization timestamp */
-static long int time_reference;
 
 /**
  * Allocates next available identifier.
@@ -97,6 +107,28 @@ hash_map_size_t_equal(const void *l, const void *r) {
 }
 
 /**
+ * Function that cleans up a concurrent callback just before
+ * the end of it's execution.
+ *
+ * @param thread_id identity of the thread executor
+ *        responsible for executing the concurrent callback.
+ */
+static void
+thread_cleanup_function(size_t * thread_id) {
+    hashmap_entry * entry =
+        (hashmap_entry *)hashmap_remove(removal_callback_map, thread_id);
+    if (entry != NULL) {
+        concurrent_cb_info *info = (concurrent_cb_info *)entry->value;
+
+        SAFE_FREE(info->threadlib_thread_id);
+
+        SAFE_FREE(entry->value);
+        SAFE_FREE(entry->key);
+        SAFE_FREE(entry);
+    }
+}
+
+/**
  * Function to be called by a thread.
  *
  * @param arg parameter to be passed during the function call.
@@ -136,7 +168,7 @@ thread_start_routine(void * arg) {
         }
     } while(concurrent_cb_info_ptr->periodic_cb); /* continue execution if call-back is periodic */
     concurrent_cb_info_ptr->executing = 0;
-
+    concurrent_cb_info_ptr->cleanup_func(concurrent_cb_info_ptr->local_thread_id);
     return NULL;
 }
 
@@ -170,6 +202,7 @@ concurrent_install_cb_internal(
         info->interval = interval;
         info->cb = cb;
         info->cb_data = cb_data;
+        info->cleanup_func = thread_cleanup_function;
         info->periodic_cb = periodic;
         if (periodic) {
             info->strict_timing_enabled = strict_timing_enabled;
@@ -199,13 +232,14 @@ extern void
 concurrent_init(void) {
     if (!concurrent_initialized) {
         callback_map = SAFE_MALLOC(sizeof(hashmap));
+        removal_callback_map = SAFE_MALLOC(sizeof(hashmap));
         mutex_map = SAFE_MALLOC(sizeof(hashmap));
         condvar_map = SAFE_MALLOC(sizeof(hashmap));
         hashmap_init(callback_map, 17, hash_map_size_t_equal, NULL);
+        hashmap_init(removal_callback_map, 17, hash_map_size_t_equal, NULL);
         hashmap_init(mutex_map, 17, hash_map_size_t_equal, NULL);
         hashmap_init(condvar_map, 17, hash_map_size_t_equal, NULL);
         concurrent_initialized++;
-        time_reference = get_ms_since_epoch();
     }
 }
 
@@ -277,17 +311,32 @@ concurrent_uninstall_cb(size_t * thread_id) {
             (hashmap_entry *)hashmap_remove(callback_map, thread_id);
         if (entry != NULL) {
             concurrent_cb_info *info = (concurrent_cb_info *)entry->value;
+
+            if (info->periodic_cb) {
+                info->periodic_cb = 0;
+            }
+#if 0
             if (info->executing) {
+                log_warn_format(
+                    "concurrent: canceling execution of thread %lu",
+                    *(info->local_thread_id));
                 /* cancel thread execution */
                 concurrentfactory_cancel_thread(*(info->threadlib_thread_id));
             }
+#endif
             /* detach to release claimed resources */
             concurrentfactory_detach_thread(*(info->threadlib_thread_id));
 
-            SAFE_FREE(info->threadlib_thread_id);
+            if (info->executing) {
+                /* mark call-back to be ready for removal */
+                hashmap_put(removal_callback_map, thread_id, info);
+            } else {
+                /* clean-up own resources */
+                SAFE_FREE(info->threadlib_thread_id);
 
-            SAFE_FREE(entry->value);
-            SAFE_FREE(entry->key);
+                SAFE_FREE(entry->value);
+                SAFE_FREE(entry->key);
+            }
             SAFE_FREE(entry);
         }
     }
@@ -573,6 +622,7 @@ concurrent_condvar_broadcast(size_t * condvar_id) {
 extern void
 concurrent_shutdown(void) {
     if (concurrent_initialized) {
+    	hashmap_free(removal_callback_map);
         hashmap_free(callback_map);
         hashmap_free(mutex_map);
         hashmap_free(condvar_map);
