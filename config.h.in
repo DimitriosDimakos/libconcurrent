@@ -48,6 +48,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define to 1 if you have the <windows.h> header file. */
+#undef HAVE_WINDOWS_H
+
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
 #undef LT_OBJDIR
@@ -75,3 +78,12 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Do not use Posix threads */
+#undef __NO_POSIX_THREAD_LIB
+
+/* force use of Unix threads */
+#undef __USE_UNIX_THREAD_LIB
+
+/* force use of Windows threads */
+#undef __USE_WINAPI_THREAD_LIB
