@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
- /*
+
+/**
  * Utility module providing time related operations.
  */
 
@@ -46,29 +46,19 @@
 
 #ifdef _WIN32
 
-#ifndef _TIMEVAL_DEFINED
-
-/* define timeval structure */
-struct timeval {
-    long tv_sec;
-    long tv_usec;
-};
-
-#endif /* _TIMEVAL_DEFINED */
-
 /* Epoch Jan 1 1970 00:00:00. */
 static const unsigned __int64 epoch = ((unsigned __int64) 116444736000000000ULL);
 
-/*
+/**
  * Implementation of gettimeofday for Windows platform. Timezone information
  * is not relevant so it is not used.
  *
- * @param tp reference to a timeval structure to store time value.
+ * @param tp reference to a time_val_struct structure to store time value.
  *
  * @return always zero.
  */
 static int
-gettimeofday(struct timeval * tp) {
+gettimeofday(time_val_struct * tp) {
     FILETIME  file_time;
     SYSTEMTIME system_time;
     ULARGE_INTEGER ularge;
@@ -86,24 +76,37 @@ gettimeofday(struct timeval * tp) {
 
 #endif /* _WIN32 */
 
-/*
+/**
  * Wrapper function for the gettimeofday function
  *
- * @param tp reference to a timeval structure to be passed
+ * @param tp reference to a time_val_struct structure to be passed
           to the gettimeofday function
  *
- * @return result of gettimeofday function call.
+ * @return 0 for success, or -1 for failure
  */
 static int
-time_util_gettimeofday(struct timeval * tp) {
+time_util_gettimeofday(time_val_struct * tp) {
 #ifdef _WIN32
     return gettimeofday(tp);
 #else
-    return gettimeofday(tp, NULL);
+#ifdef __USE_CLOCK_GETTIME
+        struct timespec timespec_now;
+        int result = clock_gettime(CLOCK_REALTIME, &timespec_now);
+
+        tp->tv_sec = timespec_now.tv_sec;
+        tp->tv_usec = timespec_now.tv_nsec / 1000L;
+        return result;
+#else
+    struct timeval t;
+    int result = gettimeofday(&t, NULL);
+    tp->tv_sec = t.tv_sec;
+    tp->tv_usec = t.tv_usec;
+    return result;
+#endif /* __USE_CLOCK_GETTIME */
 #endif /* _WIN32 */
 }
 
-/*
+/**
  * The suspend() function shall cause the calling thread to be suspended from execution
  * until the number of real-time seconds specified by the argument seconds has elapsed
  * The suspension time may be longer than requested due to the scheduling of other
@@ -121,7 +124,7 @@ suspend(long seconds) {
     return msuspend(seconds * 1000L);
 }
 
-/*
+/**
  * The suspend() function shall cause the calling thread to be suspended from execution
  * until the number of real-time milliseconds specified by the argument seconds has elapsed
  * The suspension time may be longer than requested due to the scheduling of other
@@ -135,21 +138,22 @@ extern int
 msuspend(long mseconds) {
     if (mseconds <= 0L) {
         return (-1);
-    }
+    } else {
 #ifdef _WIN32
-    Sleep(mseconds);
+        Sleep(mseconds);
 
-    return 1;
+        return 1;
 #else
-    struct timeval tp;
-    tp.tv_sec = mseconds / 1000L;
-    tp.tv_usec = (mseconds % 1000L) * 1000L;
+        struct timeval tp;
+        tp.tv_sec = mseconds / 1000L;
+        tp.tv_usec = (mseconds % 1000L) * 1000L;
 
-    return select(0, NULL, NULL, NULL, &tp);
+        return select(0, NULL, NULL, NULL, &tp);
 #endif /* _WIN32 */
+    }
 }
 
-/*
+/**
  * The get_ms_since_epoch() function returns the milliseconds passed since the Epoch.
  *
  * @return milliseconds passed since the Epoch.
@@ -157,22 +161,15 @@ msuspend(long mseconds) {
 extern long long
 get_ms_since_epoch(void) {
     long long t_now;
-#ifdef __USE_CLOCK_GETTIME
-    struct timespec timespec_now;
-
-    clock_gettime(CLOCK_REALTIME, &timespec_now);
-    t_now = timespec_now.tv_sec * 1000LL + timespec_now.tv_nsec / 1000000000LL;
-#else
-    struct timeval timeval_now;
+    time_val_struct timeval_now;
 
     time_util_gettimeofday(&timeval_now);
     t_now = timeval_now.tv_sec * 1000LL + timeval_now.tv_usec / 1000LL;
-#endif /*__USE_CLOCK_GETTIME*/
 
     return t_now;
 }
 
-/*
+/**
  * The get_time_since_epoch() function returns the time passed since the Epoch
  * as a time_val_struct structure.
  *
@@ -182,19 +179,7 @@ get_ms_since_epoch(void) {
 extern void
 get_time_since_epoch(time_val_struct * time_val) {
     if (time_val) {
-#ifdef __USE_CLOCK_GETTIME
-        struct timespec timespec_now;
-
-        clock_gettime(CLOCK_REALTIME, &timespec_now);
-        time_val->tv_sec = timespec_now.tv_sec;
-        time_val->tv_usec = timespec_now.tv_nsec;
-#else
-        struct timeval timeval_now;
-
-        time_util_gettimeofday(&timeval_now);
-        time_val->tv_sec = timeval_now.tv_sec;
-        time_val->tv_usec = timeval_now.tv_usec / 1000000L;
-#endif /*__USE_CLOCK_GETTIME*/
+        time_util_gettimeofday(time_val);
     }
 }
 
@@ -208,16 +193,9 @@ get_time_since_epoch(time_val_struct * time_val) {
 extern long long
 get_wall_time_ms(long long t_ref) {
 	long long t_now;
-#ifdef __USE_CLOCK_GETTIME
-    struct timespec timespec_now;
-
-    clock_gettime(CLOCK_REALTIME, &timespec_now);
-    t_now = timespec_now.tv_sec * 1000LL + timespec_now.tv_nsec / 1000000000LL;
-#else
-    struct timeval timeval_now;
+	time_val_struct timeval_now;
 
     time_util_gettimeofday(&timeval_now);
     t_now = timeval_now.tv_sec * 1000LL + timeval_now.tv_usec / 1000LL;
-#endif /*__USE_CLOCK_GETTIME*/
     return (t_now - t_ref);
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-/*
+/**
  * Utility module providing time related operations.
  */
 
@@ -27,11 +27,11 @@ extern "C" {
 
 /* structure to store time value. */
 typedef struct _time_val_struct {
-    long tv_sec;
-    long tv_usec;
+    long int tv_sec;
+    long int tv_usec;
 } time_val_struct;
 
-/*
+/**
  * The suspend() function shall cause the calling thread to be suspended from execution
  * until the number of real-time seconds specified by the argument seconds has elapsed
  * The suspension time may be longer than requested due to the scheduling of other
@@ -44,7 +44,7 @@ typedef struct _time_val_struct {
 extern int
 suspend(long seconds);
 
-/*
+/**
  * The suspend() function shall cause the calling thread to be suspended from execution
  * until the number of real-time milliseconds specified by the argument seconds has elapsed
  * The suspension time may be longer than requested due to the scheduling of other
@@ -57,7 +57,7 @@ suspend(long seconds);
 extern int
 msuspend(long mseconds);
 
-/*
+/**
  * The get_ms_since_epoch() function returns the milliseconds passed since the Epoch.
  *
  * @return milliseconds passed since the Epoch.
@@ -65,7 +65,7 @@ msuspend(long mseconds);
 extern long long
 get_ms_since_epoch(void);
 
-/*
+/**
  * The get_time_since_epoch() function returns the time passed since the Epoch
  * as a time_val_struct structure.
  *

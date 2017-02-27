@@ -59,9 +59,11 @@ safe_malloc(
 #ifdef TEST
     __malloc_counter++;
     fprintf(stdout, "safe_malloc: %p, counter: %d\n", ptr, __malloc_counter);
-//    if (modulename != NULL && funcname != NULL && lineno > 0) {
-//        fprintf(stdout, "[safe_malloc stacktrace] %s:%s:%lu\n", modulename, funcname, lineno);
-//    }
+#if USE_SAFE_MEMORY_TRACE
+    if (modulename != NULL && funcname != NULL && lineno > 0) {
+        fprintf(stdout, "[safe_malloc stacktrace] %s:%s:%lu\n", modulename, funcname, lineno);
+    }
+#endif
 #endif
 
     return ptr;
@@ -122,8 +124,10 @@ safe_free(
 #ifdef TEST
     __malloc_counter--;
     fprintf(stdout, "counter: %d\n", __malloc_counter);
-//    if (modulename != NULL && funcname != NULL && lineno > 0) {
-//      fprintf(stdout, "[safe_free stacktrace] %s:%s:%lu\n", modulename, funcname, lineno);
-//    }
+#if USE_SAFE_MEMORY_TRACE
+    if (modulename != NULL && funcname != NULL && lineno > 0) {
+      fprintf(stdout, "[safe_free stacktrace] %s:%s:%lu\n", modulename, funcname, lineno);
+    }
+#endif
 #endif
 }
