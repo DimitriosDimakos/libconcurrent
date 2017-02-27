@@ -25,11 +25,26 @@
 extern "C" {
 #endif
 
-#if defined(_WIN32) && defined(__NO_PTHREAD_LIB)
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H*/
 
+#ifdef __NO_POSIX_THREAD_LIB
+
+#ifdef _WIN32
+/* use windows threads */
 #define __USE_WINAPI_THREAD_LIB
+#endif /* _WIN32 */
 
-#endif /* defined(_WIN32) && defined(_NO_PTHREAD_LIB) */
+#ifdef __sun
+/* use UNIX threads */
+#define __USE_UNIX_THREAD_LIB
+#endif  /* __sun */
+
+#else
+/* use posix threads */
+#define __USE_POSIX_THREAD_LIB
+#endif /* __NO_POSIX_THREAD_LIB */
 
 #ifdef __USE_WINAPI_THREAD_LIB
 
@@ -39,32 +54,47 @@ typedef HANDLE cthread_t;
 typedef CRITICAL_SECTION cthread_mutex_t;
 
 #if (_WIN32_WINNT >= NTDDI_VISTA)
-
 /* Minimum system required for CONDITION_VARIABLE is Windows Vista */
 typedef CONDITION_VARIABLE cthread_cond_t;
-
 #else
-
 /* use own implementation of a conditional variable. */
 #define __USE_OWN_CONDVAR
-
 #endif /* (_WIN32_WINNT >= NTDDI_VISTA) */
 
 #ifdef __USE_OWN_CONDVAR
 
+struct _cthread_cond_t {
+    HANDLE hSemaphore;
+    cthread_mutex_t *waiters_mutex;
+    int waiters_no;
+};
+
 typedef struct _cthread_cond_t cthread_cond_t;
 
 #endif /* __USE_OWN_CONDVAR */
+#endif /* __USE_WINAPI_THREAD_LIB */
 
-#else
+#ifdef __USE_UNIX_THREAD_LIB
 
+#include <thread.h>
+typedef thread_t cthread_t;
+typedef mutex_t cthread_mutex_t;
+typedef cond_t cthread_cond_t;
+
+#endif /* __USE_UNIX_THREAD_LIB  */
+
+#ifdef __USE_POSIX_THREAD_LIB
+
+#ifndef _REENTRANT
+#define _REENTRANT
+#endif /* _REENTRANT */
 #include <pthread.h>
 
 typedef pthread_t cthread_t;
 typedef pthread_mutex_t cthread_mutex_t;
 typedef pthread_cond_t cthread_cond_t;
 
-#endif /* __USE_WINAPI_THREAD_LIB */
+#endif /*__USE_POSIX_THREAD_LIB  */
 
 /**
  * Creates a thread which starts execution by invoking start_routine.
@@ -105,6 +135,12 @@ concurrentfactory_join_thread(cthread_t cthread_id);
  */
 extern int
 concurrentfactory_cancel_thread(cthread_t cthread_id);
+
+/**
+ * Terminates the calling thread.
+ */
+extern void
+concurrentfactory_thread_exit(void);
 
 /**
  * Create a mutex.

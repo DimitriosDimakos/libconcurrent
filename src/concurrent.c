@@ -169,6 +169,7 @@ thread_start_routine(void * arg) {
     } while(concurrent_cb_info_ptr->periodic_cb); /* continue execution if call-back is periodic */
     concurrent_cb_info_ptr->executing = 0;
     concurrent_cb_info_ptr->cleanup_func(concurrent_cb_info_ptr->local_thread_id);
+    concurrentfactory_thread_exit();
     return NULL;
 }
 
