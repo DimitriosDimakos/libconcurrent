@@ -31,10 +31,10 @@
  * @param job_data argument to be passed to this function.
  */
 static void
-concurent_job_n(void *job_data) {
-    char * job_name = (char *)job_data;
+concurent_job_n(void *client_data) {
+    char * job_name = (char *)client_data;
 
-    fprintf(stdout, "doing job %s\n", job_name);
+    fprintf(stdout, "performing job [%s]\n", job_name);
     concurrent_util_suspend(1);
 }
 
@@ -150,9 +150,9 @@ simple_cb(void *cb_data, size_t * thread_id) {
  */
 static void
 test_thread() {
-    size_t * thread;
+	size_t * thread;
 
-    fprintf(stdout, "TEST THREAD started >>>>>>>>>>\n");
+	fprintf(stdout, "TEST THREAD started >>>>>>>>>>\n");
     /* test simple thread creation */
     thread = concurrent_install_cb(1000, simple_cb, NULL);
     concurrent_util_suspend(5);
@@ -220,11 +220,11 @@ test_mutex() {
  */
 static void *
 broadcast_signal_cb(void *cb_data, size_t * thread_id) {
-    concurrent_signal * signal = (concurrent_signal *)cb_data;
+	concurrent_signal * signal = (concurrent_signal *)cb_data;
 
-    fprintf(stdout, "thread %u trying to wait for signal %u ...\n", *thread_id, *(signal->condvar));
+	fprintf(stdout, "thread %u trying to wait for signal %u ...\n", *thread_id, *(signal->condvar));
 
-    if (concurrent_util_wait_signal(signal)) {
+	if (concurrent_util_wait_signal(signal)) {
     	fprintf(stdout, "thread %u got signal %u!\n", *thread_id, *(signal->condvar));
     } else {
     	fprintf(stderr, "thread %u failed to wait for signal %u!\n", *thread_id, *(signal->condvar));
@@ -280,21 +280,20 @@ test_broadcast_signal() {
  */
 static void *
 timedwait_signal_cb(void *cb_data, size_t * thread_id) {
-    int result;
-    concurrent_signal * signal = (concurrent_signal *)cb_data;
+	int result;
+	concurrent_signal * signal = (concurrent_signal *)cb_data;
 
-    fprintf(stdout, "thread %u trying to wait for signal %u for 5000 miliseconds ...\n",
+	fprintf(stdout, "thread %u trying to wait for signal %u for 5000 miliseconds ...\n",
 	    *thread_id, *(signal->condvar));
 
-    result = concurrent_util_timedwait_signal(signal, 5000L);
-    if (result > 0) {
-        fprintf(stdout, "thread %u got signal %u!\n", *thread_id, *(signal->condvar));
+	result = concurrent_util_timedwait_signal(signal, 5000L);
+	if (result > 0) {
+		fprintf(stdout, "thread %u got signal %u!\n", *thread_id, *(signal->condvar));
     } else if (result == 0) {
     	fprintf(stdout, "thread %u signal %u timed out\n", *thread_id, *(signal->condvar));
     } else {
     	fprintf(stderr, "thread %u failed to wait for signal %u!\n", *thread_id, *(signal->condvar));
     }
-
     return NULL;
 }
 
